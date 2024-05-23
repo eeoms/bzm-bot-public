@@ -1,0 +1,20 @@
+Compost, Crimson essence, Wither essence, squash, toxic arrow poison, Enchanted slime ball, slime ball, Enchanted slime block, sorrow, enchanted leather , jungle key, dungeon key, Lazer eye, Ectoplasm, Enchanted baked potato , enchanted iron, enchanted gold  , Enchanted Myclieum, Enchanted Redsand
+for Auto repeat
+
+Enchanted Cactus green, E Pumpkin, E potato, E cocoa , E sugar , Titanic exp bottle , endernpearl, whale bait, Enchanted Golden carrots, Enchanted cookie, Enchanted hay bale,
+For Godtier 
+
+Risk = Buyout Price - (Amount of Items * instasell price)
+
+Buyout Price = Average Buy Price × Amount of Items
+Amount of Items = 
+Average Buy Price = Amount of Items / Coin Equivalent, Amount of Items
+
+
+
+
+!Godtier
+Enchanted golden carrots - 1m risk
+Sand - 2m risk
+Cactus -4m risk
+Smt like that

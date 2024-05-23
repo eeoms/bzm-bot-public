@@ -1,0 +1,12 @@
+{
+  "dependencies": {
+    "discord.js": "^14.15.2",
+    "dotenv": "^16.4.5",
+    "mongodb": "^6.6.2",
+    "node-fetch": "^3.3.2",
+    "puppeteer": "^22.9.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.57.0"
+  }
+}
