@@ -18,10 +18,84 @@ async function connectToMongoDB() {
     console.log('Connected to MongoDB');
 }
 
+const itemsToScrape = [
+    'Compost', 'Essence Crimson', 'Essence Wither', 'Squash', 'Toxic Arrow Poison', 'Enchanted Slime Ball', 'Slime Ball',
+    'Enchanted Slime Block', 'Sorrow', 'Enchanted Leather', 'Jungle Key', 'Dungeon Chest Key', 'Giant Fragment Laser', 'Ectoplasm',
+    'Enchanted Baked Potato', 'Enchanted Iron', 'Enchanted Gold', 'Enchanted Mycelium', 'Enchanted Red sand'
+];
+
+let scrapedData = {};
+
+async function updateScrapedData() {
+    scrapedData = await scrapeRisk(itemsToScrape);
+}
+
+updateScrapedData();
+setInterval(updateScrapedData, 4 * 60 * 1000); // Update every 2 minutes
+
+async function getInstasellPrice(itemName) {
+    const url = `https://api.hypixel.net/v2/skyblock/bazaar`;
+    const response = await fetch(url);
+    const data = await response.json();
+    const itemData = data.products[itemName.toUpperCase().replace(/ /g, '_')];
+    return itemData.quick_status.sellPrice;
+}
+
+function formatToMillions(number) {
+    let million = 1000000;
+    if (number >= million) {
+        let formattedNumber = (number / million).toFixed(1) + 'm';
+        return formattedNumber;
+    } else {
+        return number.toString();
+    }
+}
+
 // When the client is ready, run this code (only once)
 client.once('ready', async () => {
     console.log('Ready!');
     await connectToMongoDB();
+    setInterval(async () => {
+        let itemsBelow150M = [];
+
+        for (const [itemName, data] of Object.entries(scrapedData)) {
+            // Risk = Buyout Price - (Amount of Items * instasell price)
+            let buyoutPrice = Number(data['Buyout Price'].replace(/,/g, ''));
+            let amountOfItems = Number(data['Amount of Items'].replace(/,/g, ''));
+            let instasellPrice = await getInstasellPrice(itemName);
+            let risk = buyoutPrice - (amountOfItems * instasellPrice);
+            console.log(buyoutPrice, amountOfItems, instasellPrice); 
+            console.log(itemName, risk)
+
+            if (risk < 150000000) {
+                itemsBelow150M.push({ itemName, risk });
+            }
+        }
+
+        const channel = client.channels.cache.get('1243435054336835664');
+
+        if (itemsBelow150M.length > 0) {
+            itemsBelow150M.forEach(({ itemName, risk }) => {
+
+                let formattedRisk = Math.floor(risk).toLocaleString();
+                let formattedRiskToMil = formatToMillions(risk);
+
+                const riskEmbed = new EmbedBuilder()
+                    .setColor(0x7a9f9a)
+                    .setTitle(`**Risk for *${itemName}***`)
+                    .setURL(`https://www.skyblock.bz/product/${itemName.toUpperCase().replace(/ /g, '_')}`)
+                    .addFields(
+                        { name: `Risk`, value: `${formattedRisk} (**${formattedRiskToMil}**)`, inline: false }
+                    )
+                    .setTimestamp()
+                    .setFooter({ text: 'Risk data provided by the Hypixel API', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+
+                channel.send({ embeds: [riskEmbed] });
+            });
+        } else {
+            channel.send('**🔴 There are no items with a risk below 150M at this time.**');
+        }
+    }, 4 * 60 * 1000); // Check every 2 minutes
 });
 
 // Login to Discord with your app's token
@@ -86,75 +160,60 @@ client.on('messageCreate', async message => {
             console.error(error);
             message.channel.send('**🔴 There was an error retrieving the online status.**');
         }
-    } else if (command === '!risk') {
-        const itemName = args.slice(1).join(' ');
-        if (!itemName) {
-            message.channel.send('**🟠 Please provide an item name.**');
-            return;
-        }
+    } else if (command === '!godroll') {
         try {
-            const { partialData, imgSrc } = await risk(itemName);
-
-            const url = `https://api.hypixel.net/v2/skyblock/bazaar`;
-            const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`API Error: ${response.statusText}`);
-            }
-
-            const data = await response.json();
-            const itemKey = itemName.toUpperCase().replace(/ /g, '_');
-
-            if ((!partialData || Object.keys(partialData).length === 0) && data.products && data.products[itemKey] && data.products[itemKey].product_id === itemKey) {
-                message.channel.send(`**🟠 I'm sorry, but that item has more then 30 sell orders, please make sure it is listed on https://www.skyblock.bz/manipulate website.**`);
-                return;
-            } else if (!partialData || Object.keys(partialData).length === 0) {
-                message.channel.send(`**🔴 I'm sorry, but I can't find *${itemName}*, please make sure it is spelt right and on the https://www.skyblock.bz/manipulate website.**`);
-                return;
-            } else {
-                
-                let emoji;
-                
-                let noCommaRisk = partialData['Risk'].replace(/,/g, '');
-                let numRisk = Number(noCommaRisk);
-                if (numRisk <= 200000000) {
-                    emoji = '🟢';
-                } else {
-                    emoji = '🔴';
-                }
-
-                const riskEmbed = new EmbedBuilder()
-                    .setColor(0x7a9f9a)
-                    .setTitle(`**Risk for *${itemName}***`)
-                    .setURL(`https://www.skyblock.bz/product/${itemName.toUpperCase().replace(/ /g, '_')}`)
-                    .setDescription(`**Partial** risk and other stats for *${itemName}*`)
-                    .setThumbnail(imgSrc)
-                    .addFields(
-                        { name: 'Buyout Price', value: partialData['Buyout Price'], inline: false },
-                        { name: 'Average Buy Price', value: partialData['Average Buy Price'], inline: false },
-                        { name: 'Amount of Items', value: partialData['Amount of Items'], inline: false },
-                        { name: 'Post-Buyout Price', value: partialData['Post-Buyout Price'], inline: false },
-                        { name: `Risk ${emoji}`, value: partialData['Risk'], inline: false }
-                    )
-                    .setTimestamp()
-                    .setFooter({ text: 'Risk data provided by the Hypixel API', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
-
-                message.channel.send({ embeds: [riskEmbed] });
-            }
+            let statusList;
         } catch (error) {
             console.error(error);
-            message.channel.send('There was an error retrieving the risk.');
+            message.channel.send('**🔴 There was an error retrieving the online status.**');
         }
     }
 });
 
-async function risk(itemName) {
-    let risk;
-    let amountOfItems;
-    let buyoutPrice;
-    let sellPrice;
+async function scrapeRisk(items) {
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
 
-    let result;
-    return result;
+    let scrapedData = {};
+
+    for (const itemName of items) {
+        const itemUrl = `https://www.skyblock.bz/product/${itemName.toUpperCase().replace(/ /g, '_')}`;
+        await page.goto(itemUrl, { waitUntil: 'networkidle2', timeout: 90000 });
+
+        try {
+            await page.waitForSelector('tr.svelte-5z8cas', { timeout: 90000 });
+
+            const result = await page.evaluate(() => {
+                const rows = document.querySelectorAll('tr.svelte-5z8cas');
+                let amountOfItems = '';
+                let buyoutPrice = '';
+
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('td.svelte-5z8cas');
+                    if (cells.length === 3 && cells[0].textContent.trim() === 'Total:') {
+                        amountOfItems = cells[1].textContent.trim();
+                        buyoutPrice = cells[2].textContent.trim().replace(' coins', '');
+                    }
+                });
+
+                return { amountOfItems, buyoutPrice };
+            });
+
+            if (result.amountOfItems && result.buyoutPrice) {
+                scrapedData[itemName] = {
+                    'Amount of Items': result.amountOfItems,
+                    'Buyout Price': result.buyoutPrice
+                };
+            } else {
+                console.log(`No data found for ${itemName}`);
+            }
+        } catch (error) {
+            console.error(`Error scraping ${itemName}:`, error);
+        }
+    }
+
+    await browser.close();
+    return scrapedData;
 }
 
 async function getUUID(username) {
