@@ -18,3 +18,11 @@ Enchanted golden carrots - 1m risk
 Sand - 2m risk
 Cactus -4m risk
 Smt like that
+
+
+!list (lists items on risk)
+
+!risk add
+!risk delete
+
+!visit (most popular items)
