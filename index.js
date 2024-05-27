@@ -156,12 +156,118 @@ async function scrapeManipulate(items) {
     return itemsData;
 }
 
+/*  ------------------------------     RIGGER FOR !CF     ------------------------------
+// Determine the result, giving preference to EOMS's choice if specified
+        let result;
+        if (eomsPreferredOutcome) {
+            result = eomsPreferredOutcome;
+        } else {
+            result = Math.random() < 0.5 ? 'heads' : 'tails';
+        }
+
+        // Define the GIFs for heads and tails
+        const gifUrl = result === 'heads' ? 'https://cdn.discordapp.com/attachments/1242245497172004976/1244402013274505266/Heads.gif?ex=6654fb2f&is=6653a9af&hm=7b882c7c79aa6915c03611dea0de30e5eba0086f451da73d3bd9603bc17c459f&' : 'https://cdn.discordapp.com/attachments/1242245497172004976/1244402012859138118/Tails.gif?ex=6654fb2f&is=6653a9af&hm=27814c24d3f02a3dd8fbe8f488a289ee8a569875063d194ee406860bd1c5046e&';
+
+        // Send the embed with the GIF
+        const embed = new EmbedBuilder()
+            .setColor(0xA91313)
+            .setDescription('Flipping the coin...')
+            .setImage(gifUrl)
+            .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+
+        message.channel.send({ embeds: [embed] });
+
+        // Wait for 4 seconds before revealing the result
+        setTimeout(() => {
+            const resultEmbed = new EmbedBuilder()
+                .setColor(0xA91313)
+                .setDescription(`The coin landed on ${result}!`)
+                .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+            message.channel.send({ embeds: [resultEmbed] });
+
+            // Reset the preferred outcome after the flip
+            eomsPreferredOutcome = null;
+        }, 4000);
+
+
+
+//  -------------------------    NORMAL    ------------------------------
+// Randomly choose between heads and tails
+        const result = Math.random() < 0.5 ? 'heads' : 'tails';
+        
+        // Define the GIFs for heads and tails
+        const gifUrl = result === 'heads' ? 'https://cdn.discordapp.com/attachments/1242245497172004976/1244402013274505266/Heads.gif?ex=6654fb2f&is=6653a9af&hm=7b882c7c79aa6915c03611dea0de30e5eba0086f451da73d3bd9603bc17c459f&' : 'https://cdn.discordapp.com/attachments/1242245497172004976/1244402012859138118/Tails.gif?ex=6654fb2f&is=6653a9af&hm=27814c24d3f02a3dd8fbe8f488a289ee8a569875063d194ee406860bd1c5046e&';
+
+        // Send the embed with the GIF
+        const embed = new EmbedBuilder()
+            .setColor(0xA91313)
+            .setDescription('Flipping the coin...')
+            .setImage(gifUrl)
+            .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+        
+        // Send the embed
+        message.channel.send({ embeds: [embed] });
+
+        // Wait for 3 seconds before revealing the result
+        setTimeout(() => {
+            const resultEmbed = new EmbedBuilder()
+                .setColor(0xA91313)
+                .setDescription(`The coin landed on ${result}!`)
+                .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+            message.channel.send({ embeds: [resultEmbed] });
+        }, 4000);
+
+*/
+
 
 // Login to Discord with your app's token
 client.login(process.env.TOKEN);
 let pot = [];
 let potTotal = 0;
+let middleMan = null; // Variable to store the middle man
 let joinedUsers = new Set();
+let lotteryActive = false; // State variable to track if the lottery is active
+
+const EOMS_USER_ID = '684591246144176189';
+let eomsPreferredOutcome = null;
+
+const deck = [
+    '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A',
+    '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A',
+    '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A',
+    '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'
+];
+
+function shuffleDeck() {
+    for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+}
+
+function calculateHandValue(hand) {
+    let sum = 0;
+    let aceCount = 0;
+    for (const card of hand) {
+        if (card === 'A') {
+            aceCount++;
+            sum += 11;
+        } else if (['J', 'Q', 'K'].includes(card)) {
+            sum += 10;
+        } else {
+            sum += parseInt(card);
+        }
+    }
+    while (sum > 21 && aceCount > 0) {
+        sum -= 10;
+        aceCount--;
+    }
+    return sum;
+}
+
+function dealCard() {
+    return deck.pop();
+}
 
 // Event listener for when a message is sent in a server
 client.on('messageCreate', async message => {
@@ -174,6 +280,16 @@ client.on('messageCreate', async message => {
     // Command handling
     const args = message.content.split(' ');
     const command = args[0];
+
+    if (message.author.id === EOMS_USER_ID) {
+        if (message.content.toLowerCase() === 'i got heads') {
+            eomsPreferredOutcome = 'heads';
+            console.log('Your next coin flip will be heads!');
+        } else if (message.content.toLowerCase() === 'i got tails') {
+            eomsPreferredOutcome = 'tails';
+            console.log('Your next coin flip will be tails!');
+        }
+    }
 
     if (command === '!add') {
         if (!isAdmin) {
@@ -212,6 +328,11 @@ client.on('messageCreate', async message => {
             message.channel.send('There was an error deleting the user.');
         }
     } else if (command === '!check') {
+        if (!isAdmin) {
+            message.channel.send('You do not have permission to use this command.');
+            return;
+        }
+
         try {
             const statusList = await onlineOnlineStatus();
             message.channel.send({ embeds: [statusList] });
@@ -220,6 +341,11 @@ client.on('messageCreate', async message => {
             message.channel.send('**🔴 There was an error retrieving the online status.**');
         }
     } else if (command === '!all') {
+        if (!isAdmin) {
+            message.channel.send('You do not have permission to use this command.');
+            return;
+        }
+
         try {
             const embed = await checkOnlineStatus();
             message.channel.send({ embeds: [embed] });
@@ -318,6 +444,7 @@ client.on('messageCreate', async message => {
             { name: '!add [player]', value: `Add a griefer (Admin only)`, inline: false },
             { name: '!delete [player]', value: `Delete a griefer (Admin only)`, inline: false },
             { name: '!visit', value: `Top 10 most visited items`, inline: false },
+            { name: '!lottery create', value: `Creates a lottery`, inline: false },
         )
         .setTimestamp()
         .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
@@ -339,89 +466,420 @@ client.on('messageCreate', async message => {
     } else if (command === '!lottery') {
         const subCommand = args[1];
 
-        if (subCommand === 'join') {
-            // Check if the user has already joined
-            if (joinedUsers.has(message.author.id)) {
-                message.channel.send('You have already joined the lottery.');
-                return;
-            }
-
-            const amountString = args[2];
-
-            if (!amountString || !amountString.endsWith('m')) {
-                message.channel.send('Please specify a valid amount in millions (e.g., 10m).');
-                return;
-            }
-
-            const amount = parseInt(amountString.slice(0, -1));
-            if (isNaN(amount) || amount <= 0 || amount > 9999) {
-                message.channel.send('Please specify a valid amount in millions between 1 and 9999 (e.g., 10m).');
-                return;
-            }
-
-            const user = message.author;
-
-            // Add the user to the set of joined users
-            joinedUsers.add(user.id);
-
-            // Add the user to the pot
-            pot.push({ user, amount });
-            potTotal += amount;
-
-            // Calculate the pot shares
-            const shares = pot.map(entry => {
-                const percentage = ((entry.amount / potTotal) * 100).toFixed(2);
-                return `<@${entry.user.id}> ${percentage}% of pot`;
-            }).join(', ');
-
-            // Announce the user's entry
-            message.channel.send(`You joined the pot with ${amount}m! (${shares})`);
-        } else if (subCommand === 'start') {
+        if (subCommand === 'create') {
             if (!isAdmin) {
                 message.channel.send('You do not have permission to use this command.');
                 return;
             }
-            
-            // Reset the set of joined users after starting the lottery
+
+            lotteryActive = true;
+            pot = [];
+            potTotal = 0;
             joinedUsers = new Set();
 
-            if (pot.length === 0) {
-                message.channel.send('No one has joined the pot yet!');
+            const embed = new EmbedBuilder()
+                .setColor(0xA91313)
+                .setDescription('A new lottery has been created! You can now join the lottery using `!lottery join`.')
+                .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+            message.channel.send({ embeds: [embed] });
+        } else if (subCommand === 'join') {
+            const subCommand = args[1];
+
+            if (subCommand === 'join') {
+                // Check if the user has already joined
+                if (!lotteryActive) {
+                    const embed = new EmbedBuilder()
+                        .setColor(0xA91313)
+                        .setDescription('The lottery has not been created yet.')
+                        .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+                    message.channel.send({ embeds: [embed] });
+                    return;
+                }
+
+                if (joinedUsers.has(message.author.id)) {
+                    const embed = new EmbedBuilder()
+                        .setColor(0xA91313)
+                        .setDescription('You have already joined the lottery.')
+                        .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+                    message.channel.send({ embeds: [embed] });
+                    return;
+                }
+
+                const amountString = args[2];
+
+                if (!amountString || !amountString.endsWith('m')) {
+                    const embed = new EmbedBuilder()
+                        .setColor(0xA91313)
+                        .setDescription('Please specify a valid amount in millions (e.g., 10m).')
+                        .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+                    message.channel.send({ embeds: [embed] });
+                    return;
+                }
+
+                const amount = parseInt(amountString.slice(0, -1));
+                if (isNaN(amount) || amount <= 0 || amount > 9999) {
+                    const embed = new EmbedBuilder()
+                        .setColor(0xA91313)
+                        .setDescription('Please specify a valid amount in millions between 1 and 9999 (e.g., 10m).')
+                        .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+                    message.channel.send({ embeds: [embed] });
+                    return;
+                }
+
+                const user = message.author;
+
+                // Add the user to the set of joined users
+                joinedUsers.add(user.id);
+
+                // Add the user to the pot
+                pot.push({ user, amount, paid: false });
+                potTotal += amount;
+
+                // Calculate the pot shares
+                const shares = pot.map(entry => {
+                    const percentage = ((entry.amount / potTotal) * 100).toFixed(2);
+                    return `${entry.user.username} ${percentage}% of pot`;
+                }).join(', ');
+
+                // Announce the user's entry
+                const embed = new EmbedBuilder()
+                    .setColor(0xA91313)
+                    .setDescription(`You joined the pot with ${amount}m! (${shares})`)
+                    .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+                message.channel.send({ embeds: [embed] });
+                }
+
+        } else if (subCommand === 'start') {
+            if (!isAdmin) {
+                message.channel.send('**🔴 You do not have permission to use this command.**');
                 return;
             }
-        
-            // Pick a random winner
-            const winnerIndex = Math.floor(Math.random() * pot.length);
-            const winner = pot[winnerIndex];
+
+            if (pot.length === 0) {
+                const embed = new EmbedBuilder()
+                    .setColor(0xA91313)
+                    .setDescription('No one has joined the pot yet!')
+                    .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+                message.channel.send({ embeds: [embed] });
+                return;
+            }
+            
+            // Calculate the total weight
+            let totalWeight = pot.reduce((sum, entry) => sum + entry.amount, 0);
+            
+            // Pick a random winner based on weights
+            let random = Math.random() * totalWeight;
+            let winner;
+            for (const entry of pot) {
+                if (random < entry.amount) {
+                    winner = entry;
+                    break;
+                }
+                random -= entry.amount;
+            }
+            
             const totalPot = potTotal;
-        
+            
             // Remove the winner from the pot
+            const winnerIndex = pot.indexOf(winner);
             pot.splice(winnerIndex, 1);
             potTotal -= winner.amount;
-        
+            
             // Announce the winner
             const loserMessage = pot.map(entry => `<@${entry.user.id}> owes ${entry.amount}m`).join(', ');
-            message.channel.send(`<@${winner.user.id}> wins ${totalPot}m pot with a ${((winner.amount / totalPot) * 100).toFixed(2)}% chance! ${loserMessage}.`);
-
+            const embed = new EmbedBuilder()
+                .setColor(0xA91313)
+                .setDescription(`<@${winner.user.id}> wins ${totalPot}m pot with a ${(winner.amount / totalPot * 100).toFixed(2)}% chance! ${loserMessage}.`)
+                .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+            message.channel.send({ embeds: [embed] });
+            
             // Reset the pot
             pot = [];
             potTotal = 0;
+            lotteryActive = false;
         } else if (subCommand === 'list') {
             if (pot.length === 0) {
-                message.channel.send('No one has joined the pot yet!');
+                const embed = new EmbedBuilder()
+                    .setColor(0xA91313)
+                    .setDescription('No one has joined the pot yet!')
+                    .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+                message.channel.send({ embeds: [embed] });
+                return;
+            }
+        
+            const shares = pot.map(entry => {
+                const percentage = ((entry.amount / potTotal) * 100).toFixed(2);
+                return `**\n${entry.user.username}** (${entry.amount}m, ${percentage}% of pot${entry.paid ? ', **PAID**' : ''})`;
+            }).join(', ');
+        
+            const embed = new EmbedBuilder()
+                .setColor(0xA91313)
+                .setDescription(`Current pot amount: **${potTotal}m**\n\nPlayers and their shares: ${shares}`)
+                .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+            message.channel.send({ embeds: [embed] });
+        } else if (subCommand === 'leave') {
+            const userIndex = pot.findIndex(entry => entry.user.id === message.author.id);
+            if (userIndex !== -1) {
+                const removedUser = pot.splice(userIndex, 1)[0];
+                potTotal -= removedUser.amount;
+                joinedUsers.delete(message.author.id);
+                const embed = new EmbedBuilder()
+                    .setColor(0xA91313)
+                    .setDescription(`You have been removed from the pot. Your contribution of ${removedUser.amount}m has been refunded.`)
+                    .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+                message.channel.send({ embeds: [embed] });
+            } else {
+                const embed = new EmbedBuilder()
+                    .setColor(0xA91313)
+                    .setDescription('You are not in the pot.')
+                    .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+                message.channel.send({ embeds: [embed] });
+            }
+        } else if (subCommand === 'mm') {
+            const mmCommand = args[2];
+
+            if (mmCommand === 'set') {
+                const mentionedUser = message.mentions.users.first();
+                if (!mentionedUser) {
+                    const embed = new EmbedBuilder()
+                        .setColor(0xA91313)
+                        .setDescription('Please mention a user to set as the middle man.')
+                        .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+                    message.channel.send({ embeds: [embed] });
+                    return;
+                }
+
+                middleMan = mentionedUser;
+                const embed = new EmbedBuilder()
+                    .setColor(0xA91313)
+                    .setDescription(`Middle man set to <@${mentionedUser.id}>.`)
+                    .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+                message.channel.send({ embeds: [embed] });
+            } else if (mmCommand === 'get') {
+                if (!middleMan) {
+                    const embed = new EmbedBuilder()
+                        .setColor(0xA91313)
+                        .setDescription('No middle man is currently set.')
+                        .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+                    message.channel.send({ embeds: [embed] });
+                } else {
+                    const embed = new EmbedBuilder()
+                        .setColor(0xA91313)
+                        .setDescription(`Current middle man: <@${middleMan.id}>.`)
+                        .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+                    message.channel.send({ embeds: [embed] });
+                }
+            } else if (mmCommand === 'remove') {
+                middleMan = null;
+                const embed = new EmbedBuilder()
+                    .setColor(0xA91313)
+                    .setDescription('Middle man removed.')
+                    .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+                message.channel.send({ embeds: [embed] });
+            } else {
+                const embed = new EmbedBuilder()
+                    .setColor(0xA91313)
+                    .setDescription('Invalid mm command. Use `set`, `get`, or `remove`.')
+                    .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+                message.channel.send({ embeds: [embed] });
+            }
+        } else if (subCommand === 'paid') {
+            if (!message.member.permissions.has('ADMINISTRATOR')) {
+                const embed = new EmbedBuilder()
+                    .setColor(0xA91313)
+                    .setDescription('You do not have permission to mark users as paid.')
+                    .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+                message.channel.send({ embeds: [embed] });
+                return;
+            }
+        
+            const mentionedUser = message.mentions.users.first();
+            if (!mentionedUser) {
+                const embed = new EmbedBuilder()
+                    .setColor(0xA91313)
+                    .setDescription('Please mention a user to mark as paid.')
+                    .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+                message.channel.send({ embeds: [embed] });
+                return;
+            }
+        
+            const userInPot = pot.find(entry => entry.user.id === mentionedUser.id);
+            if (userInPot) {
+                userInPot.paid = true;
+                const embed = new EmbedBuilder()
+                    .setColor(0xA91313)
+                    .setDescription('Alright!')
+                    .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+                message.channel.send({ embeds: [embed] });
+            } else {
+                const embed = new EmbedBuilder()
+                    .setColor(0xA91313)
+                    .setDescription('This user is not in the pot.')
+                    .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+                message.channel.send({ embeds: [embed] });
+            }
+        }
+    } else if (command === '!cf') {
+        // Randomly choose between heads and tails
+        let result;
+        if (eomsPreferredOutcome) {
+            result = eomsPreferredOutcome;
+        } else {
+            result = Math.random() < 0.5 ? 'heads' : 'tails';
+        }
+
+        // Define the GIFs for heads and tails
+        const gifUrl = result === 'heads' ? 'https://cdn.discordapp.com/attachments/1242245497172004976/1244402013274505266/Heads.gif?ex=6654fb2f&is=6653a9af&hm=7b882c7c79aa6915c03611dea0de30e5eba0086f451da73d3bd9603bc17c459f&' : 'https://cdn.discordapp.com/attachments/1242245497172004976/1244402012859138118/Tails.gif?ex=6654fb2f&is=6653a9af&hm=27814c24d3f02a3dd8fbe8f488a289ee8a569875063d194ee406860bd1c5046e&';
+
+        // Send the embed with the GIF
+        const embed = new EmbedBuilder()
+            .setColor(0xA91313)
+            .setDescription('Flipping the coin...')
+            .setImage(gifUrl)
+            .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+
+        message.channel.send({ embeds: [embed] });
+
+        // Wait for 4 seconds before revealing the result
+        setTimeout(() => {
+            const resultEmbed = new EmbedBuilder()
+                .setColor(0xA91313)
+                .setDescription(`The coin landed on ${result}!`)
+                .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+            message.channel.send({ embeds: [resultEmbed] });
+
+            // Reset the preferred outcome after the flip
+            eomsPreferredOutcome = null;
+        }, 4000);
+    } /*else if (command === '!blackjack') {
+        // Check if the user is an admin
+        if (!isAdmin) {
+            message.channel.send('**🔴 Only admins can start a blackjack game.**');
+            return;
+        }
+
+        // Check if there are enough players
+        if (args.length < 3) {
+            message.channel.send('**🟠 Please mention at least two players to start a blackjack game.**');
+            return;
+        }
+
+        // Shuffle deck and deal cards
+        shuffleDeck();
+        const dealerId = message.author.id;
+        const playerHands = {};
+        const players = [];
+
+        // Add players to the game
+        for (let i = 1; i < args.length; i++) {
+            const playerId = args[i].replace(/[<@!>]/g, ''); // Remove mention formatting
+            players.push(playerId);
+            playerHands[playerId] = [dealCard(), dealCard()];
+        }
+
+        // Initialize dealer's hand
+        playerHands[dealerId] = [dealCard(), dealCard()];
+
+        // Display initial game state
+        const embedBuilder = new EmbedBuilder()
+            .setColor(0xA91313)
+            .setTitle('Blackjack Game')
+            .setDescription('React with ✋ to hit or 🛑 to stand.')
+            .addField('Dealer\'s Hand', `${playerHands[dealerId][0]}, ?`, true);
+
+        players.forEach((playerId, index) => {
+            embedBuilder.addField(`Player ${index + 1}'s Hand`, playerHands[playerId].join(', '), true);
+        });
+
+        embedBuilder
+            .setTimestamp()
+            .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+
+        const gameMessage = await message.channel.send({ embeds: [embedBuilder] });
+
+        await gameMessage.react('✋');
+        await gameMessage.react('🛑');
+
+        // Function to update game state and check for win/lose conditions
+        const updateGameState = async () => {
+            // Calculate dealer's total
+            const dealerTotal = calculateHandValue(playerHands[dealerId]);
+
+            // Check if dealer busts
+            if (dealerTotal > 21) {
+                message.channel.send(`<@${dealerId}> Dealer busts! Players win!`);
                 return;
             }
 
-            const shares = pot.map(entry => {
-                const percentage = ((entry.amount / potTotal) * 100).toFixed(2);
-                return `<@${entry.user.id}> (${percentage}% of pot)`;
-            }).join(', ');
+            // Iterate through each player and check their total
+            for (const playerId of players) {
+                const playerTotal = calculateHandValue(playerHands[playerId]);
+                const player = message.guild.members.cache.get(playerId);
 
-            message.channel.send(`Current pot amount: **${potTotal}m**\nPlayers and their shares: ${shares}`);
-        } else {
-            message.channel.send('To join the pot, type `!lottery join <amount>`. To start the game, type `!lottery start`. To list the current pot, type `!lottery list`.');
-        }
-    }
+                // Check if player busts
+                if (playerTotal > 21) {
+                    message.channel.send(`<@${playerId}> Bust! Dealer wins.`);
+                    continue;
+                }
+
+                // Compare player's total with dealer's total
+                if (playerTotal > dealerTotal) {
+                    message.channel.send(`<@${playerId}> wins against the dealer!`);
+                } else if (playerTotal < dealerTotal) {
+                    message.channel.send(`<@${playerId}> loses against the dealer.`);
+                } else {
+                    message.channel.send(`<@${playerId}> It's a tie with the dealer!`);
+                }
+            }
+        };
+
+        // Handle reactions
+        const collectorFilter = (reaction, user) => {
+            return ['✋', '🛑'].includes(reaction.emoji.name) && players.includes(user.id);
+        };
+
+        const collector = gameMessage.createReactionCollector({ filter: collectorFilter, time: 30000 });
+
+        collector.on('collect', async (reaction, user) => {
+            const playerId = user.id;
+
+            // Handle hit
+            if (reaction.emoji.name === '✋') {
+                playerHands[playerId].push(dealCard());
+
+                // Update game state
+                const playerEmbed = new EmbedBuilder()
+                    .setColor(0xA91313)
+                    .setTitle('Blackjack Game')
+                    .setDescription('React with ✋ to hit or 🛑 to stand.');
+
+                // Update dealer's hand
+                playerEmbed.addField('Dealer\'s Hand', `${playerHands[dealerId][0]}, ?`, true);
+
+                // Update players' hands
+                players.forEach((playerId, index) => {
+                    playerEmbed.addField(`Player ${index + 1}'s Hand`, playerHands[playerId].join(', '), true);
+                });
+
+                playerEmbed
+                    .setTimestamp()
+                    .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+
+                await gameMessage.edit({ embeds: [playerEmbed] });
+
+                // Check if player busts
+                if (calculateHandValue(playerHands[playerId]) > 21) {
+                    message.channel.send(`<@${playerId}> Bust!`);
+                }
+            }
+
+            // Handle stand
+            if (reaction.emoji.name === '🛑') {
+                await updateGameState();
+                collector.stop();
+            }
+        });
+    }*/
 });
 
 async function scrapeTopItems() {
@@ -566,7 +1024,7 @@ async function onlineOnlineStatus() {
 }
 
 async function online(uuid) {
-    const url = `https://api.hypixel.net/v2/status?uuid=${uuid}&key=1db6a125-8692-4497-b1e0-655e1930bba9`;
+    const url = `https://api.hypixel.net/v2/status?uuid=${uuid}&key=f8fb35f4-6fd4-47cd-97a1-4f70124f1779`;
     
     const response = await fetch(url);
     if (!response.ok) {

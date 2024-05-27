@@ -10,6 +10,8 @@ Buyout Price = Average Buy Price × Amount of Items
 Amount of Items = 
 Average Buy Price = Amount of Items / Coin Equivalent, Amount of Items
 
+bought e grilled pork 5/27/2024 - PPU 410k, total 65m
+
 
 
 
@@ -18,6 +20,10 @@ Enchanted golden carrots - 1m risk
 Sand - 2m risk
 Cactus -4m risk
 Smt like that
+
+You should code a 50m hourly one
+200m daily one
+1b weekly one
 
 
 !visit (most popular items)
