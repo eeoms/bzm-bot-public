@@ -720,14 +720,8 @@ client.on('messageCreate', async message => {
             }
         }
     } else if (command === '!cf') {
-        // Randomly choose between heads and tails
-        let result;
-        if (eomsPreferredOutcome) {
-            result = eomsPreferredOutcome;
-        } else {
-            result = Math.random() < 0.5 ? 'heads' : 'tails';
-        }
-
+        const result = Math.random() < 0.5 ? 'heads' : 'tails';
+        
         // Define the GIFs for heads and tails
         const gifUrl = result === 'heads' ? 'https://cdn.discordapp.com/attachments/1242245497172004976/1244402013274505266/Heads.gif?ex=6654fb2f&is=6653a9af&hm=7b882c7c79aa6915c03611dea0de30e5eba0086f451da73d3bd9603bc17c459f&' : 'https://cdn.discordapp.com/attachments/1242245497172004976/1244402012859138118/Tails.gif?ex=6654fb2f&is=6653a9af&hm=27814c24d3f02a3dd8fbe8f488a289ee8a569875063d194ee406860bd1c5046e&';
 
@@ -737,20 +731,54 @@ client.on('messageCreate', async message => {
             .setDescription('Flipping the coin...')
             .setImage(gifUrl)
             .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
-
+        
+        // Send the embed
         message.channel.send({ embeds: [embed] });
 
-        // Wait for 4 seconds before revealing the result
+        // Wait for 3 seconds before revealing the result
         setTimeout(() => {
             const resultEmbed = new EmbedBuilder()
                 .setColor(0xA91313)
                 .setDescription(`The coin landed on ${result}!`)
                 .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
             message.channel.send({ embeds: [resultEmbed] });
-
-            // Reset the preferred outcome after the flip
-            eomsPreferredOutcome = null;
         }, 4000);
+    } else if (command ==='!godroll') {
+        try {
+            const items = await getItemsFromDatabase();
+
+            // Scrape and get the risk values for all items
+            const itemsData = await scrapeManipulate(items);
+
+            // Filter out items without valid risk values and sort by risk (ascending)
+            const sortedItems = itemsData
+                .filter(item => {
+                    const riskValue = parseFloat(item.partial.risk.replace(/,/g, ''));
+                    return !isNaN(riskValue);
+                })
+                .sort((a, b) => parseFloat(a.partial.risk.replace(/,/g, '')) - parseFloat(b.partial.risk.replace(/,/g, '')));
+
+            if (sortedItems.length === 0) {
+                message.channel.send('No items found with valid risk values.');
+                return;
+            }
+
+            // Construct the message with sorted items
+            const sortedItemsList = sortedItems.map(item => `${item.itemName}: ${item.partial.risk}`).join('\n');
+
+            // Send the sorted list to the channel
+            const embed = new EmbedBuilder()
+                .setColor(0xA91313)
+                .setTitle('Sorted Items by Risk (Low to High)')
+                .setDescription(sortedItemsList)
+                .setTimestamp()
+                .setFooter({ text: 'Skyblock Bazaar', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+
+            message.channel.send({ embeds: [embed] });
+        } catch (error) {
+            console.error('Error fetching and sorting items:', error);
+            message.channel.send('There was an error fetching and sorting items by risk.');
+        }
     } /*else if (command === '!blackjack') {
         // Check if the user is an admin
         if (!isAdmin) {
@@ -1024,7 +1052,7 @@ async function onlineOnlineStatus() {
 }
 
 async function online(uuid) {
-    const url = `https://api.hypixel.net/v2/status?uuid=${uuid}&key=f8fb35f4-6fd4-47cd-97a1-4f70124f1779`;
+    const url = `https://api.hypixel.net/v2/status?uuid=${uuid}&key=58f3bf6b-af9c-42ac-b7dd-a281263fbc86`;
     
     const response = await fetch(url);
     if (!response.ok) {
