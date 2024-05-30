@@ -1,5 +1,5 @@
 // Require the necessary discord.js classes
-const { Client, GatewayIntentBits, PermissionsBitField } = require('discord.js');
+const { Client, GatewayIntentBits, PermissionsBitField, ChannelType } = require('discord.js');
 const { MongoClient } = require('mongodb');
 require('dotenv').config();
 const puppeteer = require('puppeteer');
@@ -779,7 +779,95 @@ client.on('messageCreate', async message => {
             console.error('Error fetching and sorting items:', error);
             message.channel.send('There was an error fetching and sorting items by risk.');
         }
-    } /*else if (command === '!blackjack') {
+    } else if (command === '!ticketcreate') {
+        if (!isAdmin) {
+            message.channel.send('You do not have permission to use this command.');
+            return;
+        }
+    
+        const embed = new EmbedBuilder()
+            .setColor(0xA91313)
+            .setTitle('🎖️ Bazaar Maniac Supports')
+            .setDescription(`🎯 Welcome to supports!
+    Select an option below to get started!
+    
+    ✨ Manipulation help - We are trying to help the new player trying to manipulate, but don't ask "how do I get started". Manipulation help is for solving a specific problem.
+    
+    🎀 Giveaway Redeems - Won a giveaway? Make a ticket to claim!
+    
+    🏆 Griefer Reports - Report any griefer that's griefing your manipulation here, so we have a better understanding of their timezone, ability to log on, etc.
+    
+    ⌛ You Can Expect Instant Response Times From 03:00 PM EST to 11:00 PM EST
+    
+    🎫 Type !ticket to create a ticket!`);
+    
+        message.channel.send({ embeds: [embed] });
+    } else if (command === '!ticket') {
+        const allowedChannelId = '1240475372034982010';
+    
+        // Check if the command is used in the specified channel
+        if (message.channel.id !== allowedChannelId) {
+            message.channel.send('You can only use this command in the specified channel.');
+            return;
+        }
+    
+        // Delete the user's command message
+        message.delete().catch(console.error);
+    
+        const categoryName = 'Tickets';
+        const categoryChannel = message.guild.channels.cache.find(c => c.name === categoryName && c.type === ChannelType.GuildCategory);
+    
+        if (!categoryChannel) {
+            message.channel.send(`Tickets category "${categoryName}" does not exist.`);
+            console.error(`Tickets category "${categoryName}" does not exist.`);
+            console.log(message.guild.channels.cache.map(c => c.name)); // Log all channel names for debugging
+            return;
+        }
+    
+        message.guild.channels.create({
+            name: `ticket-${message.author.username}`,
+            type: ChannelType.GuildText,
+            parent: categoryChannel.id,
+            permissionOverwrites: [
+                {
+                    id: message.guild.id,
+                    deny: [PermissionsBitField.Flags.ViewChannel],
+                },
+                {
+                    id: message.author.id,
+                    allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
+                },
+                {
+                    id: '1227670431150903297', // Replace with your actual admin role ID
+                    allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages],
+                },
+            ],
+        }).then(channel => {
+            const embed = new EmbedBuilder()
+                .setColor(0xA91313)
+                .setDescription(`🏆 Support will be with you shortly. Please fill out the information below:
+                
+                **Ign**:
+                **Issue**:
+                **Timezone**:
+                
+                You can close the ticket with \`!close\`.`);
+            
+            channel.send({ content: `<@${message.author.id}> Thanks for opening a ticket!`, embeds: [embed] });
+        }).catch(err => {
+            console.error(err);
+            message.channel.send('There was an error creating your ticket.');
+        });
+    } else if (command === '!close') {
+        if (message.channel.name.startsWith('ticket-')) {
+            message.channel.delete()
+                .then(() => console.log(`Deleted channel ${message.channel.name}`))
+                .catch(console.error);
+        } else {
+            message.channel.send('This command can only be used in a ticket channel.');
+        }
+    } 
+    /*else if (command === '!blackjack') {
         // Check if the user is an admin
         if (!isAdmin) {
             message.channel.send('**🔴 Only admins can start a blackjack game.**');
@@ -908,6 +996,12 @@ client.on('messageCreate', async message => {
             }
         });
     }*/
+
+    // Check if the message is in the specified channel and delete it
+    const allowedChannelId = '1240475372034982010';
+    if (message.channel.id === allowedChannelId && !message.author.bot) {
+        message.delete().catch(console.error);
+    }
 });
 
 async function scrapeTopItems() {
