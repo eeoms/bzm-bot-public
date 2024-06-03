@@ -49,7 +49,7 @@ async function updateLastSentTime(itemName) {
 async function scrapeAndSend() {
     const itemsToScrape = await getItemsFromDatabase();
     const itemsData = await scrapeManipulate(itemsToScrape);
-    const channel = client.channels.cache.get('1227711111227506791');
+    const channel = client.channels.cache.get('1246898104783863919');
 
     // Filter items with risk value less than 150,000,000 and not sent in the last 3 hours
     const filteredItems = [];
@@ -866,7 +866,7 @@ client.on('messageCreate', async message => {
         } else {
             message.channel.send('This command can only be used in a ticket channel.');
         }
-    } 
+    }
     /*else if (command === '!blackjack') {
         // Check if the user is an admin
         if (!isAdmin) {
@@ -1003,6 +1003,47 @@ client.on('messageCreate', async message => {
         message.delete().catch(console.error);
     }
 });
+
+async function getPartialStats(item) {
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+    await page.goto('https://www.skyblock.bz/manipulate', { waitUntil: 'networkidle2', timeout: 90000 });
+
+    const partialStats = await page.evaluate((item) => {
+        const cards = document.querySelectorAll('div.card.svelte-1crwetk');
+        
+        for (let card of cards) {
+            const itemNameElement = card.querySelector('div.item-name.svelte-1crwetk');
+            const itemName = itemNameElement ? itemNameElement.textContent.trim() : '';
+
+            if (itemName.toLowerCase() === item.toLowerCase()) {
+                const partialData = {};
+                const partialSection = card.querySelector('p.card_menu.svelte-1crwetk');
+                
+                if (partialSection) {
+                    const partialElements = partialSection.innerHTML.split('<br>');
+
+                    partialElements.forEach((element, index) => {
+                        if (element.includes('Partial')) {
+                            partialData.buyoutPrice = partialElements[index + 1]?.split(':')[1]?.trim() || 'N/A';
+                            partialData.averageBuyPrice = partialElements[index + 2]?.split(':')[1]?.trim() || 'N/A';
+                            partialData.amountOfItems = partialElements[index + 3]?.split(':')[1]?.trim() || 'N/A';
+                            partialData.postBuyoutPrice = partialElements[index + 4]?.split(':')[1]?.trim() || 'N/A';
+                            partialData.risk = partialElements[index + 5]?.split(':')[1]?.trim() || 'N/A';
+                        }
+                    });
+                }
+
+                return partialData;
+            }
+        }
+
+        return null;
+    }, item);
+
+    await browser.close();
+    return partialStats;
+}
 
 async function scrapeTopItems() {
     const browser = await puppeteer.launch();
