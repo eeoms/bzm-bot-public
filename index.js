@@ -127,7 +127,7 @@ async function scrapeAndSend() {
 
     for (const itemData of itemsData) {
         const riskValue = parseFloat(itemData.partial.risk.replace(/,/g, ''));
-        if (isNaN(riskValue) || riskValue >= 150000000) {
+        if (isNaN(riskValue) || riskValue >= 70000000) {
             continue;
         }
 
