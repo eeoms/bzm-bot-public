@@ -59,6 +59,13 @@ const commands = [
             subcommand
                 .setName('delete')
                 .setDescription('Delete your manipulation message')),
+    new SlashCommandBuilder()
+        .setName('info')
+        .setDescription('Get information about a specific item')
+        .addStringOption(option => 
+            option.setName('item')
+                .setDescription('The item to get information about')
+                .setRequired(true)),
 ];
 
 const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
@@ -165,10 +172,10 @@ async function scrapeAndSend() {
             // Discord has a limit of 10 embeds per message, so we'll send multiple messages if needed
             for (let i = 0; i < embeds.length; i += 10) {
                 const embedBatch = embeds.slice(i, i + 10);
-                await channel.send({ content: '<@&1246898074903908435>', embeds: embedBatch });
+                await channel.send({ embeds: embedBatch });
             }
         } else {
-            await channel.send({ content: '<@&1246898074903908435>', embeds: embeds });
+            await channel.send({ embeds: embeds });
         }
 
         // Update the last sent time for each item
@@ -412,6 +419,8 @@ client.on('interactionCreate', async interaction => {
                 { name: '/delete [player]', value: `Delete a griefer (Admin only)`, inline: false },
                 { name: '/visit', value: `Top 10 most visited items`, inline: false },
                 { name: '/lottery create', value: `Creates a lottery`, inline: false },
+                { name: '/godroll', value: `Lists items sorted by risk on the manip site`, inline: false },
+                { name: '/info', value: `Lists manip info for specified item`, inline: false },
             )
             .setTimestamp()
             .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
@@ -774,6 +783,36 @@ client.on('interactionCreate', async interaction => {
                 console.error('Error deleting manipulation message:', error);
                 await interaction.editReply({ content: '**🔴 There was an error deleting the manipulation message.**' });
             }
+        }
+    } else if (commandName === 'info') {
+        const item = options.getString('item');
+
+        // Defer the reply to acknowledge the interaction immediately
+        await interaction.deferReply();
+
+        const itemsData = await scrapeManipulate([item]);
+
+        if (itemsData.length === 0) {
+            await interaction.editReply(`**🔴 Item not found: ${item}. It may not be on the manipulation page.**`);
+        } else {
+            const { itemName, imageUrl, partial } = itemsData[0];
+            const embed = new EmbedBuilder()
+                .setColor(0xA91313)
+                .setTitle(`**Info for *${itemName}***`)
+                .setURL(`https://www.skyblock.bz/product/${itemName.toUpperCase().replace(/ /g, '_')}`)
+                .setDescription('This item is listed on the manipulate site.')
+                .setThumbnail(imageUrl)
+                .addFields(
+                    { name: 'Buyout Price', value: `${partial.buyoutPrice}`, inline: false },
+                    { name: 'Average Buy Price', value: `${partial.averageBuyPrice}`, inline: false },
+                    { name: 'Amount of Items', value: `${partial.amountOfItems}`, inline: false },
+                    { name: 'Post-Buyout Price', value: `${partial.postBuyoutPrice}`, inline: false },
+                    { name: 'Risk', value: `${partial.risk}`, inline: false }
+                )
+                .setTimestamp()
+                .setFooter({ text: 'Skyblock Bazaar', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+
+            await interaction.editReply({ embeds: [embed] });
         }
     }
 });
