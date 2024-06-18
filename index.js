@@ -827,8 +827,8 @@ client.on('interactionCreate', async interaction => {
         // Defer the reply to acknowledge the interaction immediately
         await interaction.deferReply();
 
-        const formattedItem = item.toUpperCase().replace(/ /g, '_')
-        const itemsData = await scrapeManipulate([formattedItem]);
+
+        const itemsData = await scrapeManipulate([item]);
 
         if (itemsData.length === 0) {
             await interaction.editReply(`**🔴 Item not found: ${item}. It may not be on the manipulation page.**`);
