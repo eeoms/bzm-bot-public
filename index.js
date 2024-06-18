@@ -66,6 +66,13 @@ const commands = [
             option.setName('item')
                 .setDescription('The item to get information about')
                 .setRequired(true)),
+    new SlashCommandBuilder()
+        .setName('orders')
+        .setDescription('Fetches orders for a specified item from Skyblock Bazaar')
+        .addStringOption(option =>
+            option.setName('item')
+                .setDescription('The item to fetch orders for')
+                .setRequired(true))
 ];
 
 const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
@@ -231,6 +238,35 @@ async function scrapeManipulate(items) {
 
     await browser.close();
     return itemsData;
+}
+
+async function scrapeOrders(item) {
+    const url = `https://www.skyblock.bz/product/${item.toUpperCase().replace(/ /g, '_')}`;
+    const browser = await puppeteer.launch({ headless: true });
+    const page = await browser.newPage();
+
+    try {
+        await page.goto(url, { waitUntil: 'networkidle2' });
+
+        const orders = await page.evaluate(() => {
+            const rows = Array.from(document.querySelectorAll('table.svelte-5z8cas tbody tr'));
+            return rows.map(row => {
+                const cells = row.querySelectorAll('td');
+                return {
+                    orders: cells[0].innerText,
+                    amount: cells[1].innerText,
+                    unitPrice: cells[2].innerText,
+                    coinEquivalent: cells[3].innerText
+                };
+            }).slice(0, 30); // Limit to 30 orders
+        });
+
+        await browser.close();
+        return orders;
+    } catch (error) {
+        await browser.close();
+        throw new Error('Failed to scrape orders');
+    }
 }
 
 // Login to Discord with your app's token
@@ -421,6 +457,7 @@ client.on('interactionCreate', async interaction => {
                 { name: '/lottery create', value: `Creates a lottery`, inline: false },
                 { name: '/godroll', value: `Lists items sorted by risk on the manip site`, inline: false },
                 { name: '/info', value: `Lists manip info for specified item`, inline: false },
+                { name: '/orders', value: `Lists all orders (only items with under 30) of an item`, inline: false },
             )
             .setTimestamp()
             .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
@@ -790,7 +827,8 @@ client.on('interactionCreate', async interaction => {
         // Defer the reply to acknowledge the interaction immediately
         await interaction.deferReply();
 
-        const itemsData = await scrapeManipulate([item]);
+        const formattedItem = item.toUpperCase().replace(/ /g, '_')
+        const itemsData = await scrapeManipulate([formattedItem]);
 
         if (itemsData.length === 0) {
             await interaction.editReply(`**🔴 Item not found: ${item}. It may not be on the manipulation page.**`);
@@ -813,6 +851,41 @@ client.on('interactionCreate', async interaction => {
                 .setFooter({ text: 'Skyblock Bazaar', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
 
             await interaction.editReply({ embeds: [embed] });
+        }
+    } else if (commandName === 'orders') {
+        const item = options.getString('item');
+
+        // Defer the reply to acknowledge the interaction
+        await interaction.deferReply();
+
+        try {
+            const orders = await scrapeOrders(item);
+            const imageUrl = await getImage(item);
+
+            const formattedItem = item.toUpperCase().replace(/ /g, '_')
+
+            if (orders.length === 0) {
+                await interaction.editReply(`**🔴 No orders found for item: ${item}.**`);
+                return;
+            }
+
+            const ordersList = orders.map(order => 
+                `**Orders**: ${order.orders} **Amount**: ${order.amount}  **Unit Price**: ${order.unitPrice} **Coin Equivalent**: ${order.coinEquivalent}`
+            ).join('\n');
+
+            const embed = new EmbedBuilder()
+                .setColor(0xA91313)
+                .setTitle(`Orders for ${item}`)
+                .setImage(imageUrl)
+                .setURL(`https://www.skyblock.bz/product/${formattedItem}`)
+                .setDescription(ordersList)
+                .setTimestamp()
+                .setFooter({ text: 'Skyblock Bazaar', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+
+            await interaction.editReply({ embeds: [embed] });
+        } catch (error) {
+            console.error('Error fetching orders:', error);
+            await interaction.editReply('**🔴 There was an error fetching orders for the item.**');
         }
     }
 });
