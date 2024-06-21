@@ -18,6 +18,7 @@ const {
 const { MongoClient } = require('mongodb');
 require('dotenv').config();
 const puppeteer = require('puppeteer');
+var Table = require('easy-table')
 
 // Create a new client instance
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] });
@@ -316,10 +317,10 @@ client.on('interactionCreate', async interaction => {
             await interaction.reply('**🔴 There was an error deleting the user.**');
         }
     } else if (commandName === 'check') {
-        if (!isAdmin) {
+        /*if (!isAdmin) {
             await interaction.reply('**🔴 You do not have permission to use this command.**');
             return;
-        }
+        }*/
     
         try {
             // Defer the reply to acknowledge the interaction and give you time to perform the long-running task
@@ -336,10 +337,10 @@ client.on('interactionCreate', async interaction => {
             await interaction.editReply('**🔴 There was an error retrieving the online status.**');
         }
     } else if (commandName === 'all') {
-        if (!isAdmin) {
+        /*if (!isAdmin) {
             await interaction.reply('**🔴 You do not have permission to use this command.**');
             return;
-        }
+        }*/
     
         try {
             // Defer the reply to acknowledge the interaction and give you time to perform the long-running task
@@ -861,28 +862,43 @@ client.on('interactionCreate', async interaction => {
         try {
             const orders = await scrapeOrders(item);
             const imageUrl = await getImage(item);
-
-            const formattedItem = item.toUpperCase().replace(/ /g, '_')
-
+    
+            const formattedItem = item.toUpperCase().replace(/ /g, '_');
+    
             if (orders.length === 0) {
                 await interaction.editReply(`**🔴 No orders found for item: ${item}.**`);
                 return;
             }
-
-            const ordersList = orders.map(order => 
-                `**Orders**: ${order.orders} **Amount**: ${order.amount}  **Unit Price**: ${order.unitPrice} **Coin Equivalent**: ${order.coinEquivalent}`
-            ).join('\n');
-
-            const embed = new EmbedBuilder()
-                .setColor(0xA91313)
-                .setTitle(`Orders for ${item}`)
-                .setImage(imageUrl)
-                .setURL(`https://www.skyblock.bz/product/${formattedItem}`)
-                .setDescription(ordersList)
-                .setTimestamp()
-                .setFooter({ text: 'Skyblock Bazaar', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
-
-            await interaction.editReply({ embeds: [embed] });
+    
+            var Table = require('easy-table');
+            var t = new Table;
+    
+            function formatNumber(num) {
+                if (num >= 1000000) {
+                    return (num / 1000000).toFixed(1) + 'm';
+                } else if (num >= 1000) {
+                    return (num / 1000).toFixed(1) + 'k';
+                } else {
+                    return num.toString();
+                }
+            }
+    
+            orders.forEach(function(order) {
+                const unitPrice = parseFloat(order.unitPrice.replace(/[^\d.-]/g, ''));
+                const coinEquivalent = parseFloat(order.coinEquivalent.replace(/[^\d.-]/g, ''));
+    
+                t.cell('Orders', formatNumber(order.orders));
+                t.cell('Amount', formatNumber(order.amount));
+                t.cell('Unit Price', formatNumber(unitPrice));
+                t.cell('Coin Equivalent', formatNumber(coinEquivalent));
+                t.newRow();
+            });
+    
+            const tableOutput = t.toString();
+    
+            const responseMessage = `**Orders for ${item}**\n\`\`\`\n${tableOutput}\n\`\`\``;
+    
+            await interaction.editReply(responseMessage);
         } catch (error) {
             console.error('Error fetching orders:', error);
             await interaction.editReply('**🔴 There was an error fetching orders for the item.**');
