@@ -27,3 +27,34 @@ You should code a 50m hourly one
 
 
 !visit (most popular items)
+
+
+// CLIENT MOD
+Bazaar Feature
+
+Alerts- (Huge title/Sound appear when Buyorder/Selloffer fills)
+Griefer Alerts, Can be used across the whole community that uses the mod, Send a large ping when a specific player logs on, list can only be edited by devs
+Flip Alerts- (When more than 5 Sell offer fills at a time, Shows a huge title FLIP
+/order ingame, pop up a GUI showing 30 orders
+/Livemanipulations - Player can run /livemanipulation and notifiy the whole community using the mod a ping on whos manipulating what
+/discord ___ (Ign) Tells you the discord of the user and if they are in bazaar Maniacs or not
+/Manipulation(Premium) Tells you whats being manipulated( All item with a risk below 5m Count as a item being manipulated)
+Instant buywarning (Warns you when you insta buy alot of item for over its avg price)
+
+flipping UI : 
+show best flip atm (sort by profit per hours, using insta sell and buy infos)
+show best craft => sell flip
+NPC flip ? like buy from bazar and sell to npc
+
+Manipulation UI :
+show item with poor quantity in sell ?
+
+Personal UI : 
+put item to follow and get chat trigger if reach a price ?
+
+generals : 
+graph on all item
+
+Event flip : 
+Buy zoo item before oringo comes ? info of what would be next leg pet and price of items when last seen
+buy baits before fishing festival ? info of last days and last event price

@@ -250,7 +250,22 @@ async function scrapeOrders(item) {
         await page.goto(url, { waitUntil: 'networkidle2' });
 
         const orders = await page.evaluate(() => {
-            const rows = Array.from(document.querySelectorAll('table.svelte-5z8cas tbody tr'));
+            const headers = Array.from(document.querySelectorAll('div.h5.svelte-f7mtyj'));
+            let sellOrdersHeader = null;
+
+            for (let header of headers) {
+                if (header.innerText === 'Sell Orders') {
+                    sellOrdersHeader = header;
+                    break;
+                }
+            }
+
+            if (!sellOrdersHeader) return [];
+
+            const table = sellOrdersHeader.nextElementSibling;
+            if (!table || !table.matches('table.svelte-5z8cas')) return [];
+
+            const rows = Array.from(table.querySelectorAll('tbody tr'));
             return rows.map(row => {
                 const cells = row.querySelectorAll('td');
                 return {
