@@ -45,35 +45,24 @@ const commands = [
         .addSubcommand(subcommand => subcommand.setName('join').setDescription('Join the lottery')
             .addStringOption(option => option.setName('amount').setDescription('Amount to join with').setRequired(true))),
     new SlashCommandBuilder().setName('godroll').setDescription('Sort items by risk (low to high)'),
-    new SlashCommandBuilder()
-        .setName('livemanip')
-        .setDescription('Manage manipulation messages for specific items')
-        .addSubcommand(subcommand =>
-            subcommand
-                .setName('add')
-                .setDescription('Add a manipulation message for an item')
-                .addStringOption(option => 
-                    option.setName('item')
-                        .setDescription('The item to manipulate')
-                        .setRequired(true)))
-        .addSubcommand(subcommand =>
-            subcommand
-                .setName('delete')
-                .setDescription('Delete your manipulation message')),
-    new SlashCommandBuilder()
-        .setName('info')
-        .setDescription('Get information about a specific item')
-        .addStringOption(option => 
-            option.setName('item')
-                .setDescription('The item to get information about')
-                .setRequired(true)),
-    new SlashCommandBuilder()
-        .setName('orders')
-        .setDescription('Fetches orders for a specified item from Skyblock Bazaar')
-        .addStringOption(option =>
-            option.setName('item')
-                .setDescription('The item to fetch orders for')
-                .setRequired(true))
+    new SlashCommandBuilder().setName('livemanip').setDescription('Manage manipulation messages for specific items')
+        .addSubcommand(subcommand => subcommand.setName('add').setDescription('Add a manipulation message for an item')
+            .addStringOption(option => option.setName('item').setDescription('The item to manipulate').setRequired(true)))
+        .addSubcommand(subcommand => subcommand.setName('delete').setDescription('Delete your manipulation message')),
+    new SlashCommandBuilder().setName('info').setDescription('Get information about a specific item')
+        .addStringOption(option => option.setName('item').setDescription('The item to get information about').setRequired(true)),
+    new SlashCommandBuilder().setName('orders').setDescription('Fetches orders for a specified item from Skyblock Bazaar')
+        .addStringOption(option => option.setName('item').setDescription('The item to fetch orders for').setRequired(true)),
+    new SlashCommandBuilder().setName('detector').setDescription('Manage the manipulation detector')
+        .addSubcommand(subcommand => subcommand.setName('on').setDescription('Turn on the manipulation detector'))
+        .addSubcommand(subcommand => subcommand.setName('off').setDescription('Turn off the manipulation detector')),
+    new SlashCommandBuilder().setName('tracker').setDescription('Manage the griefer tracker')
+        .addSubcommand(subcommand => subcommand.setName('on').setDescription('Turn on the griefer tracker'))
+        .addSubcommand(subcommand => subcommand.setName('off').setDescription('Turn off the griefer tracker')),
+    new SlashCommandBuilder().setName('track').setDescription('Set the player to track')
+        .addStringOption(option => option.setName('ign').setDescription('The in-game name of the player to track').setRequired(true)),
+    new SlashCommandBuilder().setName('discord').setDescription('Fetches the Discord username associated with a Minecraft IGN')
+        .addStringOption(option => option.setName('ign').setDescription('The Minecraft IGN').setRequired(true)),
 ];
 
 const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
@@ -109,6 +98,11 @@ client.once('ready', async () => {
 });
 
 let intervalId; // Variable to hold the interval ID
+let manipIntervalId;
+let trackerIntervalId = null;
+let trackedPlayer = null;
+const notifiedUsers = new Set();
+const playerStatus = {};
 
 async function getItemsFromDatabase() {
     const collection = db.collection('scrapedItems');
@@ -285,6 +279,120 @@ async function scrapeOrders(item) {
     }
 }
 
+async function scrapeAllItems() {
+    let browser;
+    try {
+        browser = await puppeteer.launch();
+        const page = await browser.newPage();
+        await page.goto('https://www.skyblock.bz/manipulate', { waitUntil: 'networkidle2', timeout: 90000 });
+
+        const itemsData = await page.evaluate(() => {
+            const cards = document.querySelectorAll('div.card.svelte-1crwetk');
+            const scrapedItems = [];
+
+            cards.forEach(card => {
+                const itemNameElement = card.querySelector('div.item-name.svelte-1crwetk');
+                const itemName = itemNameElement ? itemNameElement.textContent.trim() : '';
+
+                const partialData = {};
+                const imageElement = card.querySelector('img');
+                const imageUrl = imageElement ? imageElement.src : '';
+
+                const partialSection = card.querySelector('p.card_menu.svelte-1crwetk');
+                if (partialSection) {
+                    const partialElements = partialSection.innerHTML.split('<br>');
+
+                    partialElements.forEach((element, index) => {
+                        if (element.includes('Partial')) {
+                            partialData.buyoutPrice = partialElements[index + 1]?.split(':')[1]?.trim() || 'N/A';
+                            partialData.averageBuyPrice = partialElements[index + 2]?.split(':')[1]?.trim() || 'N/A';
+                            partialData.amountOfItems = partialElements[index + 3]?.split(':')[1]?.trim() || 'N/A';
+                            partialData.postBuyoutPrice = partialElements[index + 4]?.split(':')[1]?.trim() || 'N/A';
+                            partialData.risk = partialElements[index + 5]?.split(':')[1]?.trim() || 'N/A';
+                        }
+                    });
+                }
+
+                scrapedItems.push({
+                    itemName,
+                    imageUrl,
+                    partial: partialData
+                });
+            });
+
+            return scrapedItems;
+        });
+
+        return itemsData;
+    } catch (error) {
+        console.error('Error during scraping:', error);
+        return [];
+    } finally {
+        if (browser) {
+            await browser.close();
+        }
+    }
+}
+
+async function scrapeAndDetect() {
+    try {
+        const itemsData = await scrapeAllItems();
+        const channel = client.channels.cache.get('1257070383950204980');
+
+        const currentTime = Date.now();
+
+        // Filter items with the specified criteria and apply cooldown check
+        const filteredItems = itemsData.filter(itemData => {
+            console.log(itemData.partial);
+
+            if (!itemData.partial || !itemData.partial.risk || !itemData.partial.postBuyoutPrice || !itemData.partial.amountOfItems) {
+                return false;
+            }
+
+            const riskValue = parseFloat(itemData.partial.risk.replace(/,/g, ''));
+            const postBuyoutPrice = parseFloat(itemData.partial.postBuyoutPrice.replace(/,/g, ''));
+            const amountOfItems = parseInt(itemData.partial.amountOfItems.replace(/,/g, ''));
+
+            const lastNotifiedTime = detectedItemsCooldown.get(itemData.itemName);
+            const isInCooldown = lastNotifiedTime && (currentTime - lastNotifiedTime < COOLDOWN_PERIOD);
+
+            return !isInCooldown &&
+                !isNaN(riskValue) && riskValue <= 5000000 &&
+                !isNaN(postBuyoutPrice) && postBuyoutPrice >= 1000000 &&
+                !isNaN(amountOfItems) && amountOfItems <= 200000;
+        });
+
+        if (filteredItems.length > 0) {
+            const embeds = filteredItems.map(({ itemName, imageUrl, partial }) => {
+                detectedItemsCooldown.set(itemName, currentTime); // Update the cooldown map
+
+                return new EmbedBuilder()
+                    .setColor(0xA91313)
+                    .setTitle(`**Possible Manipulated Item: *${itemName}***`)
+                    .setURL(`https://www.skyblock.bz/product/${itemName.toUpperCase().replace(/ /g, '_')}`)
+                    .setDescription('This item meets the criteria for a possible manipulated item.')
+                    .setThumbnail(imageUrl)
+                    .addFields(
+                        { name: 'Buyout Price', value: `${partial.buyoutPrice}`, inline: false },
+                        { name: 'Average Buy Price', value: `${partial.averageBuyPrice}`, inline: false },
+                        { name: 'Amount of Items', value: `${partial.amountOfItems}`, inline: false },
+                        { name: 'Post-Buyout Price', value: `${partial.postBuyoutPrice}`, inline: false },
+                        { name: 'Risk', value: `${partial.risk}`, inline: false }
+                    )
+                    .setTimestamp()
+                    .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+            });
+
+            for (let i = 0; i < embeds.length; i += 10) {
+                const embedBatch = embeds.slice(i, i + 10);
+                await channel.send({ embeds: embedBatch });
+            }
+        }
+    } catch (error) {
+        console.error('Error during scraping and detection:', error);
+    }
+}
+
 // Login to Discord with your app's token
 client.login(process.env.TOKEN);
 let pot = [];
@@ -293,6 +401,8 @@ let middleMan = null; // Variable to store the middle man
 let joinedUsers = new Set();
 let lotteryActive = false; // State variable to track if the lottery is active
 const manipulationMessages = new Map(); // Store message IDs for each item
+const detectedItemsCooldown = new Map();
+const COOLDOWN_PERIOD = 60 * 60 * 1000; // 1 hour in milliseconds
 
 client.on('interactionCreate', async interaction => {
     if (!interaction.isCommand()) return;
@@ -918,9 +1028,98 @@ client.on('interactionCreate', async interaction => {
             console.error('Error fetching orders:', error);
             await interaction.editReply('**🔴 There was an error fetching orders for the item.**');
         }
+    } else if (commandName === 'detector') {
+        const subCommand = options.getSubcommand();
+    
+        if (subCommand === 'on') {
+            if (!isAdmin) {
+                await interaction.reply('**🔴 You do not have permission to use this command.**');
+                return;
+            }
+    
+            if (!manipIntervalId) {
+                manipIntervalId = setInterval(scrapeAndDetect, 5 * 1000); // Start the interval
+                await interaction.reply({ content: 'Manipulation detector started.', ephemeral: true });
+            } else {
+                await interaction.reply({ content: 'Manipulation detector is already running.', ephemeral: true });
+            }
+        } else if (subCommand === 'off') {
+            if (!isAdmin) {
+                await interaction.reply('**🔴 You do not have permission to use this command.**');
+                return;
+            }
+    
+            if (manipIntervalId) {
+                clearInterval(manipIntervalId); // Stop the interval
+                manipIntervalId = null;
+                await interaction.reply({ content: 'Manipulation detector stopped.', ephemeral: true });
+            } else {
+                await interaction.reply({ content: 'Manipulation detector is not running.', ephemeral: true });
+            }
+        }
+    } else if (commandName === 'tracker') {
+        const subCommand = options.getSubcommand();
+    
+        if (subCommand === 'on') {
+            if (!isAdmin) {
+                await interaction.reply('**🔴 You do not have permission to use this command.**');
+                return;
+            }
+    
+            if (!trackerIntervalId) {
+                trackerIntervalId = setInterval(checkAndNotify, 50000); // Start the interval (every 5 seconds)
+                await interaction.reply('Griefer tracker started.');
+            } else {
+                await interaction.reply('Griefer tracker is already running.');
+            }
+        } else if (subCommand === 'off') {
+            if (!isAdmin) {
+                await interaction.reply('**🔴 You do not have permission to use this command.**');
+                return;
+            }
+    
+            if (trackerIntervalId) {
+                clearInterval(trackerIntervalId); // Stop the interval
+                trackerIntervalId = null;
+                await interaction.reply('Griefer tracker stopped.');
+            } else {
+                await interaction.reply('Griefer tracker is not running.');
+            }
+        }
+    } else if (commandName === 'track') {
+        const ign = options.getString('ign');
+        trackedPlayer = ign;
+        await interaction.reply(`Tracking player: ${ign}`);
+    } else if (commandName === 'discord') {
+        const ign = options.getString('ign');
+        try {
+            const uuidResponse = await fetch(`https://api.mojang.com/users/profiles/minecraft/${ign}`);
+            if (!uuidResponse.ok) {
+                throw new Error(`API Error: ${uuidResponse.statusText}`);
+            }
+            const uuidData = await uuidResponse.json();
+            const uuid = uuidData.id;
+            const hypixelApiKey = '09f001bc-b747-4b14-ad50-810955eb409a'
+
+            const playerResponse = await fetch(`https://api.hypixel.net/player?key=${hypixelApiKey}&uuid=${uuid}`);
+            if (!playerResponse.ok) {
+                throw new Error(`API Error: ${playerResponse.statusText}`);
+            }
+            const playerData = await playerResponse.json();
+            const discordUsername = playerData.player.socialMedia.links.DISCORD;
+
+            if (discordUsername) {
+                await interaction.reply(`The Discord username associated with ${ign} is **${discordUsername}**.`);
+            } else {
+                await interaction.reply(`No Discord username found for ${ign}.`);
+            }
+        } catch (error) {
+            console.error(error);
+            await interaction.reply(`An error occurred while fetching the Discord username for ${ign}.`);
+        }
     }
 });
-
+ 
 async function getImage(itemName) {
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
@@ -1070,27 +1269,84 @@ async function deleteUser(username) {
     await collection.deleteOne({ uuid });
 }
 
-async function checkOnlineStatus() {
-    const collection = db.collection('users');
-    const users = await collection.find().toArray();
-    let statusList = '';
-    let onlineCount = 0;
-    const totalCount = users.length;
+async function checkAndNotify() {
+    try {
+        const statusEmbed = await checkOnlineStatus();
+        const channel = client.channels.cache.get('1257076698575409223');
 
-    for (const user of users) {
-        const status = await online(user.uuid);
-        statusList += `${user.username} ${status ? '🟢' : '🔴'}\n`;
-        if (status) onlineCount++;
+        if (statusEmbed && statusEmbed.data.fields && statusEmbed.data.fields.length > 0) {
+            await channel.send({ embeds: [statusEmbed] });
+        }
+    } catch (error) {
+        console.error('Error in checkAndNotify:', error);
     }
+}
 
-    const embed = new EmbedBuilder()
-        .setColor(0xA91313)
-        .setTitle('Griefers Online Status')
-        .setDescription(`**Online Griefers: (${onlineCount}/${totalCount})**\n${statusList}`)
-        .setTimestamp()
-        .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
+async function checkOnlineStatus() {
+    try {
+        if (!trackedPlayer) return null;
 
-    return embed;
+        const user = await db.collection('users').findOne({ username: trackedPlayer });
+        if (!user) return null;
+
+        const status = await online(user.uuid);
+        let statusIndicator = '';
+
+        if (status) {
+            if (!playerStatus[user.uuid]) {
+                playerStatus[user.uuid] = 'online';
+                statusIndicator = '🟢 just got on';
+            } else if (playerStatus[user.uuid] === 'offline') {
+                playerStatus[user.uuid] = 'online';
+                statusIndicator = '🟢 just got on';
+            } else {
+                statusIndicator = '🟡 currently on';
+            }
+        } else {
+            if (playerStatus[user.uuid] === 'online') {
+                playerStatus[user.uuid] = 'offline';
+                statusIndicator = '🔴 logged off';
+            } else {
+                statusIndicator = '🔴 logged off';
+            }
+        }
+
+        if (notifiedUsers.has(user.uuid) && statusIndicator === '🟢 just got on') return null;
+
+        if (statusIndicator === '🟢 just got on') {
+            notifiedUsers.add(user.uuid);
+            setTimeout(() => notifiedUsers.delete(user.uuid), 60 * 60 * 1000); // Remove from set after 1 hour
+        }
+
+        const statusEmbed = new EmbedBuilder()
+            .setColor(0xA91313)
+            .setTitle('Online Griefers')
+            .setTimestamp()
+            .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' })
+            .addFields({ name: `**${trackedPlayer} Status:**`, value: `${trackedPlayer} ${statusIndicator}` });
+
+        return statusEmbed;
+    } catch (error) {
+        console.error('Error in checkOnlineStatus:', error);
+        return null; // Return null if an error occurs
+    }
+}
+
+async function online(uuid) {
+    try {
+        const url = `https://api.hypixel.net/v2/status?uuid=${uuid}&key=09f001bc-b747-4b14-ad50-810955eb409a`;
+
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`API Error: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data.session.online;
+    } catch (error) {
+        console.error('Error in online function:', error);
+        return false; // Return false if an error occurs
+    }
 }
 
 async function onlineOnlineStatus() {
@@ -1118,16 +1374,4 @@ async function onlineOnlineStatus() {
         .setFooter({ text: 'Bazaar Maniacs', iconURL: 'https://cdn.discordapp.com/attachments/1241982052719529985/1242353995075289108/BZM_Logo.webp?ex=664d87d2&is=664c3652&hm=f14011d75715a4933569dbf83bc01ba14a6839a76e0069db14013e3c7557ae17&' });
 
     return statusEmbed;
-}
-
-async function online(uuid) {
-    const url = `https://api.hypixel.net/v2/status?uuid=${uuid}&key=09f001bc-b747-4b14-ad50-810955eb409a`;
-    
-    const response = await fetch(url);
-    if (!response.ok) {
-        throw new Error(`API Error: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.session.online;
 }
