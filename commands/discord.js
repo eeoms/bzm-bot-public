@@ -17,19 +17,24 @@ module.exports = {
             }
             const uuidData = await uuidResponse.json();
             const uuid = uuidData.id;
-            const hypixelApiKey = config.hypixelApiKey
+            const hypixelApiKey = config.hypixelApiKey;
 
             const playerResponse = await fetch(`https://api.hypixel.net/player?key=${hypixelApiKey}&uuid=${uuid}`);
             if (!playerResponse.ok) {
                 throw new Error(`API Error: ${playerResponse.statusText}`);
             }
             const playerData = await playerResponse.json();
-            const discordUsername = playerData.player.socialMedia.links.DISCORD;
 
-            if (discordUsername) {
-                await interaction.reply(`The Discord username associated with ${ign} is **${discordUsername}**.`);
+            if (playerData.player && playerData.player.socialMedia && playerData.player.socialMedia.links) {
+                const discordUsername = playerData.player.socialMedia.links.DISCORD;
+
+                if (discordUsername) {
+                    await interaction.reply(`The Discord username associated with ${ign} is **${discordUsername}**.`);
+                } else {
+                    await interaction.reply(`No Discord username found for ${ign}.`);
+                }
             } else {
-                await interaction.reply(`No Discord username found for ${ign}.`);
+                await interaction.reply(`This player doesn't have their social media accounts linked.`);
             }
         } catch (error) {
             console.error(error);
