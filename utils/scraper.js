@@ -6,6 +6,7 @@ let trackedPlayer = ''; // Default value
 const notifiedUsers = new Set();
 const playerStatus = {};
 const detectedItemsCooldown = new Map();
+const COOLDOWN_PERIOD = 60 * 60 * 1000; // 1 hour cooldown in milliseconds
 
 function setTrackedPlayer(ign) {
     trackedPlayer = ign;
