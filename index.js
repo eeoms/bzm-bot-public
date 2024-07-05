@@ -56,7 +56,7 @@ client.on('interactionCreate', async interaction => {
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
-    const chance = Math.floor(Math.random() * 10); // Adjusted chance for 1/3000
+    const chance = Math.floor(Math.random() * 1000); // Adjusted chance for 1/1000
     if (chance === 0) {
         const rarity = spawnLootbox();
         const embed = new EmbedBuilder()
