@@ -4,6 +4,8 @@
 
 This guide will walk you through the steps to set up your Discord bot from scratch. Follow each step carefully to ensure everything is set up correctly. I made this README with ChatGPT, not too sure how reliable it is, and I'm too lazy to make my own.
 
+This bot was made for [discord.gg/bzms](https://discord.gg/bzms) but is no longer being hosted, so I'm making it open-sourced.
+
 ## Table of Contents
 
 1. [Preview](#preview)
