@@ -12,11 +12,6 @@ This guide will walk you through the steps to set up your Discord bot from scrat
 ![Example Image](https://example.com/image.jpg)
 
 </details>
-   -
-   -
-   -
-   -
-   -
 2. Setup
    - [Creating a Discord Bot](#creating-a-discord-bot)
    - [Downloading and Extracting the Code](#downloading-and-extracting-the-code)
