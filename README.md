@@ -1,4 +1,4 @@
-# Discord Bot Setup Guide
+# BZM Bot Setup Guide
 
 This guide will walk you through the steps to set up your Discord bot from scratch. Follow each step carefully to ensure everything is set up correctly.
 
