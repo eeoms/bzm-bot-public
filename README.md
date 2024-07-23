@@ -1,19 +1,31 @@
-<img src="https://cdn.discordapp.com/attachments/1246898098219778220/1265160485011980400/Slime_Bot13.png?ex=66a08005&is=669f2e85&hm=429f183ad0a0b8b547cef87895231de756c9d332c72da5bfc8a53f6f762a1072&" alt="Alt text" width="500" height="300">
+<img src="https://cdn.discordapp.com/attachments/1246898098219778220/1265160485011980400/Slime_Bot13.png?ex=66a08005&is=669f2e85&hm=429f183ad0a0b8b547cef87895231de756c9d332c72da5bfc8a53f6f762a1072&" alt="Alt text" width="300" height="300">
 
 # BZM Bot Setup Guide
 
 This guide will walk you through the steps to set up your Discord bot from scratch. Follow each step carefully to ensure everything is set up correctly.
 
 ## Table of Contents
+1. Preview
+<details>
+<summary>- Click to expand!</summary>
 
-1. [Creating a Discord Bot](#creating-a-discord-bot)
-2. [Downloading and Extracting the Code](#downloading-and-extracting-the-code)
-3. [Setting Up Your Development Environment](#setting-up-your-development-environment)
-4. [Opening the Project in VS Code](#opening-the-project-in-vs-code)
-5. [Creating a MongoDB Database](#creating-a-mongodb-database)
-6. [Configuring the Bot](#configuring-the-bot)
-7. [Running the Bot](#running-the-bot)
-8. [Additional Steps](#additional-steps)
+![Example Image](https://example.com/image.jpg)
+
+</details>
+   -
+   -
+   -
+   -
+   -
+2. Setup
+   - [Creating a Discord Bot](#creating-a-discord-bot)
+   - [Downloading and Extracting the Code](#downloading-and-extracting-the-code)
+   - [Setting Up Your Development Environment](#setting-up-your-development-environment)
+   - [Opening the Project in VS Code](#opening-the-project-in-vs-code)
+   - [Creating a MongoDB Database](#creating-a-mongodb-database)
+   - [Configuring the Bot](#configuring-the-bot)
+   - [Running the Bot](#running-the-bot)
+   - [Additional Steps](#additional-steps)
 
 ## Creating a Discord Bot
 
