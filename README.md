@@ -1,3 +1,5 @@
+https://cdn.discordapp.com/attachments/1246898098219778220/1265160485011980400/Slime_Bot13.png?ex=66a08005&is=669f2e85&hm=429f183ad0a0b8b547cef87895231de756c9d332c72da5bfc8a53f6f762a1072&
+
 # BZM Bot Setup Guide
 
 This guide will walk you through the steps to set up your Discord bot from scratch. Follow each step carefully to ensure everything is set up correctly.
