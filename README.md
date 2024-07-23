@@ -20,11 +20,41 @@ This guide will walk you through the steps to set up your Discord bot from scrat
 ## Preview
 
 <details>
-<summary>Click to expand!</summary>
+<summary>Commands</summary>
 
-![Example Image](https://example.com/image.jpg)
+![commands](https://github.com/eeoms/bzm-bot-public/blob/main/assets/bzm-help.png)
 
 </details>
+
+<details>
+<summary>Detector (/detector on/off)</summary>
+
+![detector](https://github.com/eeoms/bzm-bot-public/blob/main/assets/detector.png)
+
+</details>
+
+<details>
+<summary>Godroll</summary>
+
+![godroll](https://github.com/eeoms/bzm-bot-public/blob/main/assets/godroll.png)
+
+</details>
+
+<details>
+<summary>Orders</summary>
+
+![orders](https://github.com/eeoms/bzm-bot-public/blob/main/assets/orders.png)
+
+</details>
+
+<details>
+<summary>Risk (/risk start/stop)</summary>
+
+![risk](https://github.com/eeoms/bzm-bot-public/blob/main/assets/risk-ping.png)
+
+</details>
+
+There are more cool commands, but I'm too lazy to upload more images, you can find old usage of the bot at [discord.gg/bzms](https://discord.gg/bzms).
 
 ## Setup
 
